@@ -4,10 +4,10 @@ import subprocess
 
 BOT_CONFIG = "/root/bot_config.env"
 WG_CONFIG_PATH = "/etc/wireguard/wg0.conf"
-BOT_PATH = "/root/gensyn-bot/bot.py"
-VENV_PATH = "/root/gensyn-bot/.venv"
+BOT_PATH = "/root/node-manager/bot.py"
+VENV_PATH = "/root/node-manager/.venv"
 PYTHON_BIN = f"{VENV_PATH}/bin/python3"
-REQUIREMENTS = "/root/gensyn-bot/requirements.txt"
+REQUIREMENTS = "/root/node-manager/requirements.txt"
 
 
 def menu():
@@ -72,7 +72,7 @@ def setup_bot():
         f.write(f"USER_ID={user_id}\n")
 
     if not os.path.exists(BOT_PATH):
-        os.system("cp ./default_bot.py /root/gensyn-bot/bot.py")
+        os.system("cp ./default_bot.py /root/node-manager/bot.py")
         os.system(f"chmod +x {BOT_PATH}")
 
     print("✅ Bot config saved and default bot.py is ready.")
@@ -85,7 +85,7 @@ def start_bot():
         print("❌ Virtual environment not found. Please run option 8 to rebuild it.")
         return
 
-    REWARD_PATH = "/root/gensyn-bot/reward.py"
+    REWARD_PATH = "/root/node-manager/reward.py"
 
     os.system("screen -S vpn_bot -X quit")
     os.system(
@@ -117,7 +117,7 @@ ExecStart={PYTHON_BIN} {BOT_PATH}
 EnvironmentFile={BOT_CONFIG}
 Restart=always
 User=root
-WorkingDirectory=/root/gensyn-bot
+WorkingDirectory=/root/node-manager
 StandardOutput=journal
 StandardError=journal
 

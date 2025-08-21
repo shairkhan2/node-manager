@@ -68,8 +68,8 @@ WG_CONFIG_PATH = "/etc/wireguard/wg0.conf"
 SWARM_PEM_PATH = "/root/rl-swarm/swarm.pem"
 USER_DATA_PATH = "/root/rl-swarm/modal-login/temp-data/userData.json"
 USER_APIKEY_PATH = "/root/rl-swarm/modal-login/temp-data/userApiKey.json"
-BACKUP_USERDATA_DIR = "/root/gensyn-bot/backup-userdata"
-SYNC_BACKUP_DIR = "/root/gensyn-bot/sync-backup"
+BACKUP_USERDATA_DIR = "/root/node-manager/backup-userdata"
+SYNC_BACKUP_DIR = "/root/node-manager/sync-backup"
 GENSYN_LOG_PATH = "/root/rl-swarm/logs/swarm_launcher.log"
 WANDB_LOG_DIR = "/root/rl-swarm/logs/wandb"
 
@@ -225,7 +225,7 @@ def gensyn_soft_update(chat_id):
         USER_DATA_PATH,
         USER_APIKEY_PATH
     ]
-    backup_dir = "/root/gensyn-bot/soft-update-backup"
+    backup_dir = "/root/node-manager/soft-update-backup"
     os.makedirs(backup_dir, exist_ok=True)
     try:
         for path in backup_paths:
@@ -267,7 +267,7 @@ def gensyn_hard_update(chat_id):
         USER_DATA_PATH,
         USER_APIKEY_PATH
     ]
-    backup_dir = "/root/gensyn-bot/hard-update-backup"
+    backup_dir = "/root/node-manager/hard-update-backup"
     os.makedirs(backup_dir, exist_ok=True)
     try:
         for path in backup_paths:
@@ -464,7 +464,7 @@ def format_gensyn_status():
     from web3 import Web3
     from datetime import date
 
-    EOA_CACHE_FILE = "/root/gensyn-bot/eoa_cache.json"
+    EOA_CACHE_FILE = "/root/node-manager/eoa_cache.json"
     ALCHEMY_RPC = "https://gensyn-testnet.g.alchemy.com/v2/TD5tr7mo4VfXlSaolFlSr3tL70br2M9J"
     CONTRACT_ADDRESS = "0xFaD7C5e93f28257429569B854151A1B8DCD404c2"
     ABI = [
@@ -669,9 +669,9 @@ def callback_query(call):
                     bot.send_message(call.message.chat.id, "🚀 Starting GENSYN login...")
                     bot.send_message(call.message.chat.id, "📧 Please send your email address")
                     bot.send_message(call.message.chat.id, "🔐 Later, just send the 6-digit OTP code when received")
-                    venv_python = "/root/gensyn-bot/.venv/bin/python3"
-                    signup_script = "/root/gensyn-bot/signup.py"
-                    venv_site_packages = "/root/gensyn-bot/.venv/lib/python3.12/site-packages"
+                    venv_python = "/root/node-manager/.venv/bin/python3"
+                    signup_script = "/root/node-manager/signup.py"
+                    venv_site_packages = "/root/node-manager/.venv/lib/python3.12/site-packages"
                     with open("/root/signup.log", "w") as f:
                         subprocess.Popen(
                             [venv_python, signup_script],

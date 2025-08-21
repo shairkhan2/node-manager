@@ -12,8 +12,8 @@ import shutil
 SWARM_PEM_PATH = "/root/rl-swarm/swarm.pem"
 USER_DATA_PATH = "/root/rl-swarm/modal-login/temp-data/userData.json"
 USER_APIKEY_PATH = "/root/rl-swarm/modal-login/temp-data/userApiKey.json"
-SYNC_BACKUP_DIR = "/root/gensyn-bot/sync-backup"
-BACKUP_USERDATA_DIR = "/root/gensyn-bot/backup-userdata"
+SYNC_BACKUP_DIR = "/root/node-manager/sync-backup"
+BACKUP_USERDATA_DIR = "/root/node-manager/backup-userdata"
 GENSYN_LOG_PATH = "/root/rl-swarm/logs/swarm_launcher.log"
 
 

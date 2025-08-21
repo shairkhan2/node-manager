@@ -39,7 +39,7 @@ else
     git pull
 fi
 
-cd /root/gensyn-bot
+cd /root/node-manager
 
 # ------------------------------
 # Python virtual env & explicit pip install
@@ -112,6 +112,6 @@ if [[ "$RUNNOW" == "y" || "$RUNNOW" == "Y" ]]; then
     python3 bot_manager.py
 else
     echo "📌 To run later:"
-    echo "   source venv/bin/activate && python3 /root/gensyn-bot/bot_manager.py"
+    echo "   source venv/bin/activate && python3 /root/node-manager/bot_manager.py"
 fi
 

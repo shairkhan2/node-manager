@@ -188,7 +188,7 @@ apt-get install -y \
   libcairo2 \
   libasound2t64 || true
 
-cd /root/gensyn-bot
+cd /root/node-manager
 
 if [ ! -d .venv ]; then
   echo "🐍 Creating Python virtual environment..."
@@ -240,7 +240,7 @@ PY
 # Ensure Playwright Chromium browser is present
 ./.venv/bin/playwright install chromium || true
 
-cat >/root/gensyn-bot/.env.web <<ENV
+cat >/root/node-manager/.env.web <<ENV
 ADMIN_USERNAME=${ADMIN_USERNAME}
 ADMIN_PASSWORD_HASH=${PASSWORD_HASH}
 SESSION_SECRET=${SESSION_SECRET}
@@ -255,9 +255,9 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/gensyn-bot
-EnvironmentFile=/root/gensyn-bot/.env.web
-ExecStart=/root/gensyn-bot/.venv/bin/uvicorn webapp.app.main:app --host 0.0.0.0 --port 3012
+WorkingDirectory=/root/node-manager
+EnvironmentFile=/root/node-manager/.env.web
+ExecStart=/root/node-manager/.venv/bin/uvicorn webapp.app.main:app --host 0.0.0.0 --port 3012
 Restart=always
 RestartSec=5
 
