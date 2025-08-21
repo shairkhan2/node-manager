@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Files - Gensyn Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); max-width: 800px; margin: 0 auto; }
+      .row { margin: .5rem 0; }
+      a { color: #93c5fd; }
+      .btn { display:inline-block; margin-right: .5rem; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #1f2937; color: #e5e7eb; border: 1px solid #374151; cursor:pointer; }
+      .flash { background:#0b2e13; color:#86efac; padding:.5rem .75rem; border-radius:8px; margin-bottom:.75rem; border:1px solid #14532d; }
+      input, select { padding: .4rem .6rem; border-radius: 6px; border: 1px solid #374151; background: #0f172a; color: #e5e7eb; }
+    </style>
+  </head>
+  <body>
+    <div style="margin-bottom: .75rem;"><a href="/">← Back</a></div>
+    <div class="card">
+      <h3>File manager</h3>
+      {% if flash %}<div class="flash">{{ flash }}</div>{% endif %}
+      <div class="row">
+        <strong>Key files:</strong>
+        <div class="row">swarm.pem: {{ 'present' if has_swarm else 'missing' }} - <a href="/files/download?path=/root/rl-swarm/swarm.pem">download</a></div>
+        <div class="row">userData.json: {{ 'present' if has_userdata else 'missing' }} - <a href="/files/download?path=/root/rl-swarm/modal-login/temp-data/userData.json">download</a></div>
+        <div class="row">userApiKey.json: {{ 'present' if has_apikey else 'missing' }} - <a href="/files/download?path=/root/rl-swarm/modal-login/temp-data/userApiKey.json">download</a></div>
+      </div>
+      <div class="row">
+        <form method="post" action="/files/upload" enctype="multipart/form-data">
+          <label>Upload file:</label>
+          <select name="kind">
+            <option value="swarm">swarm.pem</option>
+            <option value="userdata">userData.json</option>
+            <option value="apikey">userApiKey.json</option>
+          </select>
+          <input type="file" name="file" required />
+          <button class="btn" type="submit">Upload</button>
+        </form>
+      </div>
+      <div class="row">
+        <strong>Backups:</strong>
+        {% if backups %}
+          <ul>
+            {% for b in backups %}
+              <li><a href="/files/download?path={{ b }}">{{ b }}</a></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="row">No backups yet</div>
+        {% endif %}
+      </div>
+    </div>
+  </body>
+  </html>
+
+

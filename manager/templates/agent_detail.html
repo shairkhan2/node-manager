@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 1rem; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); }
+      .row { margin-top: .5rem; }
+      .btn { display:inline-flex; align-items:center; gap:.4rem; margin-right: .5rem; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #2563eb; color: #e5e7eb; border: 1px solid #1d4ed8; cursor:pointer; }
+      .btn.secondary { background:#1f2937; border-color:#374151; }
+      .pill { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .5rem; border-radius:999px; background:#0b2e13; color:#86efac; border:1px solid #14532d; font-size:.85rem; }
+      .pill.bad { background:#3b0a0a; color:#fca5a5; border-color:#7f1d1d; }
+      .spinner { width:14px; height:14px; border:2px solid rgba(255,255,255,.25); border-top-color:#fff; border-radius:50%; animation: spin .8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      a { color: #93c5fd; }
+      .muted { color: #9ca3af; }
+      pre { background:#0b1225; padding: .75rem; border-radius:8px; overflow:auto; border:1px solid #1f2937; }
+    </style>
+  </head>
+  <body>
+    <div style="display:flex; justify-content: space-between; align-items:center;">
+      <h2>Agent</h2>
+      <div><a href="/">← Back</a></div>
+    </div>
+
+    <div id="data" data-agent="{{ agent_id }}"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Status</h3>
+        <div id="status">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h3>VPN</h3>
+        <div id="vpn">Loading…</div>
+        <div>
+          <button class="btn" id="vpn-on">VPN ON</button>
+          <button class="btn" id="vpn-off">VPN OFF</button>
+        </div>
+        <div class="row">
+          <textarea id="wg-config" placeholder="Paste WireGuard config here" style="width:100%; height:120px; margin-top:.5rem; border-radius:8px; border:1px solid #374151; background:#0f172a; color:#e5e7eb; padding:.5rem;"></textarea>
+          <button class="btn" id="vpn-save">Save config</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Gensyn</h3>
+        <div id="gs"></div>
+        <div class="row" style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+          <button class="btn" id="start"><span id="start-spin" class="spinner" style="display:none;"></span> ▶ Start</button>
+          <button class="btn secondary" id="stop"><span id="stop-spin" class="spinner" style="display:none;"></span> ■ Stop</button>
+          <button class="btn secondary" id="login-start">🔐 Login assistant</button>
+        </div>
+        <div id="login-flow" class="row" style="display:none;">
+          <div id="login-status" class="muted">Ready</div>
+          <div class="row"><input id="login-email" placeholder="Email" style="padding:.5rem .6rem; border-radius:8px; border:1px solid #374151; background:#0f172a; color:#e5e7eb;" /> <button class="btn" id="login-email-btn">Send OTP</button></div>
+          <div class="row"><input id="login-otp" placeholder="6-digit OTP" maxlength="6" style="padding:.5rem .6rem; border-radius:8px; border:1px solid #374151; background:#0f172a; color:#e5e7eb;" /> <button class="btn" id="login-otp-btn">Verify</button></div>
+          <div class="row"><img id="login-shot" alt="screenshot" style="max-width:100%; border:1px solid #374151; border-radius:8px; display:none;" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Peer</h3>
+        <div id="peer"></div>
+      </div>
+
+      <div class="card">
+        <h3>Terminal</h3>
+        <div class="row"><a class="btn" href="/terminal/{{ agent_id }}">Open web terminal</a></div>
+      </div>
+
+      <div class="card">
+        <h3>More</h3>
+        <div class="row"><a href="/files/{{ agent_id }}">File manager</a></div>
+        <div class="row"><a href="/command/{{ agent_id }}">Run command</a></div>
+      </div>
+    </div>
+
+    <script>
+      const agent = document.getElementById('data').getAttribute('data-agent');
+      async function refresh() {
+        try {
+          // Public IP + Gensyn status; render in Status card
+          const ip = await fetch(`/mgr/status/public_ip?agent_id=${encodeURIComponent(agent)}`).then(r=>r.json());
+          const gs = await fetch(`/mgr/gensyn/status?agent_id=${encodeURIComponent(agent)}`).then(r=>r.json());
+          const st = document.getElementById('status');
+          const ipText = ip.ok ? ip.ip : 'unknown';
+          if (!gs.error) {
+            const joinNum = (gs.joining || '').match(/Joining\s+round\D*(\d+)/i);
+            const startPair = (gs.starting || '').match(/Starting\s+round\D*(\d+\s*\/\s*\d+)/i);
+            const joinLine = joinNum ? joinNum[1] : (gs.joining || '');
+            const startLine = startPair ? startPair[1] : (gs.starting || '');
+            st.innerHTML = `
+              Public IP: <strong>${ipText}</strong><br/>
+              API: <span class='${gs.api_alive ? 'pill' : 'pill bad'}'>${gs.api_alive ? 'Online' : 'Offline'}</span><br/>
+              Gensyn screen: <span class='${gs.running ? 'pill' : 'pill bad'}'>${gs.running ? 'Running' : 'Stopped'}</span><br/>
+              Last activity: <span class='muted'>${gs.last_activity || ''}</span><br/>
+              ${joinLine ? '🧠 Joining round: <strong>' + joinLine + '</strong><br/>' : ''}
+              ${startLine ? 'Starting round: <strong>' + startLine + '</strong>' : ''}
+            `;
+          } else {
+            st.innerHTML = `Public IP: <strong>${ipText}</strong>`;
+          }
+
+          // VPN status
+          const vpn = await fetch(`/mgr/vpn/status?agent_id=${encodeURIComponent(agent)}`).then(r=>r.json());
+          const vpel = document.getElementById('vpn');
+          if (vpn.ok) vpel.innerHTML = `State: <span class='${vpn.on ? 'ok' : 'bad'}'>${vpn.on ? 'On' : 'Off'}</span>`; else vpel.textContent = 'VPN: unknown';
+
+          // Gensyn card shows controls only
+          const gsel = document.getElementById('gs');
+          gsel.textContent = '';
+          const peer = await fetch(`/mgr/gensyn/peer?agent_id=${encodeURIComponent(agent)}`).then(r=>r.json());
+          const pel = document.getElementById('peer');
+          if (peer.ok) pel.innerHTML = `Name: <strong>${peer.peer_name}</strong><br/>Reward: <strong>${peer.reward}</strong><br/>Win: <strong>${peer.score}</strong><br/>Online: <strong>${peer.online ? 'Yes' : 'No'}</strong>`;
+          else pel.textContent = 'No peer info';
+        } catch (e) {}
+      }
+      document.getElementById('vpn-on').addEventListener('click', async () => { await fetch('/mgr/vpn/on', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent })}); refresh(); });
+      document.getElementById('vpn-off').addEventListener('click', async () => { await fetch('/mgr/vpn/off', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent })}); refresh(); });
+      document.getElementById('vpn-save').addEventListener('click', async () => {
+        const cfg = document.getElementById('wg-config').value;
+        if (!cfg.trim()) { alert('Paste WireGuard config first'); return; }
+        await fetch('/mgr/vpn/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent, config: cfg })});
+        alert('Config saved to /etc/wireguard/wg0.conf');
+      });
+      document.getElementById('start').addEventListener('click', async () => { const s=document.getElementById('start-spin'); s.style.display='inline-block'; await fetch('/mgr/gensyn/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent })}); s.style.display='none'; refresh(); });
+      document.getElementById('stop').addEventListener('click', async () => { const s=document.getElementById('stop-spin'); s.style.display='inline-block'; await fetch('/mgr/gensyn/stop', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent })}); s.style.display='none'; refresh(); });
+      const loginStartBtn = document.getElementById('login-start');
+      const loginWrap = document.getElementById('login-flow');
+      const loginStatus = document.getElementById('login-status');
+      const loginEmail = document.getElementById('login-email');
+      const loginEmailBtn = document.getElementById('login-email-btn');
+      const loginOtp = document.getElementById('login-otp');
+      const loginOtpBtn = document.getElementById('login-otp-btn');
+      const loginShot = document.getElementById('login-shot');
+      loginStartBtn.addEventListener('click', async () => {
+        loginWrap.style.display = 'block';
+        loginStatus.textContent = 'Starting…';
+        await fetch('/mgr/login/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent })});
+      });
+      loginEmailBtn.addEventListener('click', async () => {
+        const email = loginEmail.value.trim(); if (!email) return;
+        await fetch('/mgr/login/email', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent, email })});
+        loginStatus.textContent = 'Email submitted. Waiting for OTP…';
+      });
+      loginOtpBtn.addEventListener('click', async () => {
+        const otp = loginOtp.value.trim(); if (!otp) return;
+        await fetch('/mgr/login/otp', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agent_id: agent, otp })});
+        loginStatus.textContent = 'OTP submitted. Finishing…';
+      });
+      async function pollLogin() {
+        try {
+          const s = await fetch(`/mgr/login/status?agent_id=${encodeURIComponent(agent)}`).then(r=>r.json());
+          const d = s.data || {};
+          if (d.status) loginStatus.textContent = 'Status: ' + d.status;
+          if (d.screenshot) { loginShot.src = `/mgr/login/screenshot?agent_id=${encodeURIComponent(agent)}&t=${Date.now()}`; loginShot.style.display='block'; }
+        } catch (e) {}
+        setTimeout(pollLogin, 1500);
+      }
+      pollLogin();
+      refresh(); setInterval(refresh, 5000);
+    </script>
+  </body>
+  </html>
+
+

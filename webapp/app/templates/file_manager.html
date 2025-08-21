@@ -1,0 +1,247 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>File Manager - Gensyn Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); max-width: 1200px; margin: 0 auto; }
+      a { color: #93c5fd; }
+      .btn { display:inline-block; margin-right: .5rem; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #1f2937; color: #e5e7eb; border: 1px solid #374151; cursor:pointer; }
+      .btn.primary { background: #2563eb; border-color: #1d4ed8; }
+      .toolbar { display:flex; gap:.5rem; flex-wrap: wrap; align-items:center; margin-bottom: .75rem; }
+      .pathbar { display:flex; gap:.25rem; flex-wrap: wrap; align-items:center; margin:.5rem 0; }
+      .muted { color:#9ca3af; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: .5rem; border-bottom: 1px solid #1f2937; }
+      th { text-align: left; color: #9ca3af; }
+      tr:hover { background: #0f172a; }
+      .dropzone { border: 2px dashed #374151; border-radius:8px; padding: .75rem; text-align:center; color:#9ca3af; }
+      .selected { background: #0b1225; }
+      input[type=text] { padding:.4rem .6rem; border-radius:6px; border:1px solid #374151; background:#0f172a; color:#e5e7eb; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div style="display:flex; justify-content: space-between; align-items:center;">
+        <h2>File Manager</h2>
+        <div><a href="/">← Back</a></div>
+      </div>
+      <div id="fm-data" data-start="{{ start_path }}" data-roots="{{ fm_roots|join(',') }}"></div>
+      <div class="muted">Roots: <span id="root-switch"></span></div>
+      <div class="pathbar" id="breadcrumb"></div>
+
+      <div class="toolbar">
+        <button class="btn" id="up-btn">Up</button>
+        <button class="btn" id="refresh-btn">Refresh</button>
+        <button class="btn" id="mkdir-btn">New Folder</button>
+        <button class="btn" id="delete-btn">Delete</button>
+        <button class="btn" id="rename-btn">Rename</button>
+        <a class="btn" id="download-btn" href="#" download>Download</a>
+        <label class="btn primary" style="cursor:pointer;">
+          Upload<input id="upload-input" type="file" multiple style="display:none;" />
+        </label>
+      </div>
+
+      <div id="dropzone" class="dropzone">Drag and drop files here to upload</div>
+
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Size</th><th>Modified</th><th>Mode</th></tr>
+        </thead>
+        <tbody id="entries"></tbody>
+      </table>
+
+    </div>
+
+    <script>
+      const dataEl = document.getElementById('fm-data');
+      const startPath = dataEl.getAttribute('data-start') || '/root';
+      const fmRoots = (dataEl.getAttribute('data-roots') || '/root,/home/ubuntu').split(',');
+      const rootSwitch = document.getElementById('root-switch');
+      rootSwitch.innerHTML = '';
+      fmRoots.forEach((r, i) => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = r;
+        a.style.marginRight = '0.5rem';
+        a.addEventListener('click', (e) => { e.preventDefault(); navigateTo(r); });
+        rootSwitch.appendChild(a);
+        if (i < fmRoots.length - 1) {
+          const sep = document.createElement('span'); sep.textContent = '|'; sep.className='muted'; sep.style.marginRight='0.5rem'; rootSwitch.appendChild(sep);
+        }
+      });
+
+      let currentPath = startPath;
+      let currentParent = null;
+      let selectedPath = null;
+
+      function sizeFmt(n) {
+        if (n == null) return '';
+        const units = ['B','KB','MB','GB','TB'];
+        let i = 0; let v = n;
+        while (v >= 1024 && i < units.length-1) { v /= 1024; i++; }
+        return v.toFixed(1) + ' ' + units[i];
+      }
+
+      function setSelected(path) {
+        selectedPath = path;
+        document.querySelectorAll('#entries tr').forEach(tr => tr.classList.remove('selected'));
+        if (path) {
+          const tr = document.querySelector(`#entries tr[data-path="${path}"]`);
+          if (tr) tr.classList.add('selected');
+          const dl = document.getElementById('download-btn');
+          const isDir = tr && tr.dataset.isDir === 'true';
+          if (!isDir) {
+            dl.href = '/fm/download?path=' + encodeURIComponent(path);
+            dl.setAttribute('download', '');
+          } else {
+            dl.href = '#';
+            dl.removeAttribute('download');
+          }
+        }
+      }
+
+      function renderBreadcrumb(items) {
+        const bc = document.getElementById('breadcrumb');
+        bc.innerHTML = '';
+        items.forEach((c, idx) => {
+          const a = document.createElement('a');
+          a.href = '#';
+          a.textContent = c.name;
+          a.addEventListener('click', (e) => { e.preventDefault(); if (idx === items.length-1) return; navigateTo(c.path); });
+          bc.appendChild(a);
+          if (idx < items.length-1) {
+            const sep = document.createElement('span'); sep.textContent = ' / '; sep.className='muted'; bc.appendChild(sep);
+          }
+        });
+      }
+
+      async function list(path) {
+        const res = await fetch('/fm/list?path=' + encodeURIComponent(path || ''));
+        const data = await res.json();
+        if (data.error) { alert('Error: ' + data.error); return; }
+        currentPath = data.path;
+        currentParent = data.parent || null;
+        renderBreadcrumb(data.breadcrumb || []);
+        const body = document.getElementById('entries');
+        body.innerHTML = '';
+        (data.entries || []).forEach(e => {
+          const tr = document.createElement('tr');
+          tr.dataset.path = e.path;
+          tr.dataset.isDir = e.is_dir ? 'true' : 'false';
+          tr.setAttribute('draggable', 'true');
+          const nameTd = document.createElement('td');
+          const link = document.createElement('a');
+          link.href = '#';
+          link.textContent = e.name + (e.is_dir ? '/' : '');
+          link.addEventListener('click', (ev) => { ev.preventDefault(); if (e.is_dir) navigateTo(e.path); else setSelected(e.path); });
+          nameTd.appendChild(link);
+          const sizeTd = document.createElement('td'); sizeTd.textContent = e.is_dir ? '' : sizeFmt(e.size);
+          const mtTd = document.createElement('td'); mtTd.textContent = e.mtime || '';
+          const modeTd = document.createElement('td'); modeTd.textContent = e.mode || '';
+          tr.appendChild(nameTd); tr.appendChild(sizeTd); tr.appendChild(mtTd); tr.appendChild(modeTd);
+          tr.addEventListener('click', () => setSelected(e.path));
+          // Drag to move
+          tr.addEventListener('dragstart', (ev) => {
+            ev.dataTransfer.effectAllowed = 'move';
+            ev.dataTransfer.setData('text/plain', e.path);
+          });
+          // Directory as drop target
+          if (e.is_dir) {
+            tr.addEventListener('dragover', (ev) => { ev.preventDefault(); tr.classList.add('selected'); });
+            tr.addEventListener('dragleave', () => tr.classList.remove('selected'));
+            tr.addEventListener('drop', async (ev) => {
+              ev.preventDefault(); tr.classList.remove('selected');
+              const srcPath = ev.dataTransfer.getData('text/plain');
+              if (!srcPath || srcPath === e.path) return;
+              const payload = { srcs: [srcPath], dest_dir: e.path };
+              const res = await fetch('/fm/move', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+              const out = await res.json();
+              if (!out.ok) alert('Move error: ' + (out.error || 'unknown'));
+              list(currentPath);
+            });
+          }
+          body.appendChild(tr);
+        });
+      }
+
+      async function navigateTo(path) {
+        await list(path);
+      }
+
+      document.getElementById('up-btn').addEventListener('click', () => {
+        if (currentParent) navigateTo(currentParent);
+      });
+
+      document.getElementById('refresh-btn').addEventListener('click', () => list(currentPath));
+
+      document.getElementById('mkdir-btn').addEventListener('click', async () => {
+        const name = prompt('Folder name');
+        if (!name) return;
+        const res = await fetch('/fm/mkdir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: currentPath, name })});
+        const data = await res.json();
+        if (data.ok) list(currentPath); else alert('Error: ' + (data.error || 'unknown'));
+      });
+
+      document.getElementById('delete-btn').addEventListener('click', async () => {
+        if (!selectedPath) return alert('Select a file/folder first');
+        if (!confirm('Delete selected?')) return;
+        const res = await fetch('/fm/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: selectedPath })});
+        const data = await res.json();
+        if (data.ok) { setSelected(null); list(currentPath); } else alert('Error: ' + (data.error || 'unknown'));
+      });
+
+      document.getElementById('rename-btn').addEventListener('click', async () => {
+        if (!selectedPath) return alert('Select a file/folder first');
+        const newName = prompt('New name', selectedPath.split('/').pop());
+        if (!newName) return;
+        const res = await fetch('/fm/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: selectedPath, new_name: newName })});
+        const data = await res.json();
+        if (data.ok) { setSelected(null); list(currentPath); } else alert('Error: ' + (data.error || 'unknown'));
+      });
+
+      // Upload via input
+      const uploadInput = document.getElementById('upload-input');
+      uploadInput.addEventListener('change', async () => {
+        if (!uploadInput.files || uploadInput.files.length === 0) return;
+        const form = new FormData();
+        for (const f of uploadInput.files) form.append('files', f);
+        const res = await fetch('/fm/upload?path=' + encodeURIComponent(currentPath), { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.ok) alert('Upload error: ' + (data.error || 'unknown'));
+        uploadInput.value = '';
+        list(currentPath);
+      });
+
+      // Drag & Drop upload
+      const dz = document.getElementById('dropzone');
+      dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background='#0f172a'; });
+      dz.addEventListener('dragleave', e => { dz.style.background=''; });
+      dz.addEventListener('drop', async e => {
+        e.preventDefault(); dz.style.background='';
+        const files = e.dataTransfer.files;
+        if (!files || files.length === 0) return;
+        const form = new FormData();
+        for (const f of files) form.append('files', f);
+        const res = await fetch('/fm/upload?path=' + encodeURIComponent(currentPath), { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.ok) alert('Upload error: ' + (data.error || 'unknown'));
+        list(currentPath);
+      });
+
+      // Keyboard shortcuts: Delete, F2 rename
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete') document.getElementById('delete-btn').click();
+        if (e.key === 'F2') document.getElementById('rename-btn').click();
+      });
+
+      // Initial load and auto-refresh every 2s
+      list(currentPath);
+      setInterval(() => list(currentPath), 2000);
+    </script>
+  </body>
+  </html>
+
+

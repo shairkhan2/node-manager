@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Gensyn Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 1rem; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); }
+      .title { display:flex; justify-content: space-between; align-items:center; }
+      .muted { color: #9ca3af; font-size: .9rem; }
+      .btn { display:inline-block; margin-right: .5rem; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #1f2937; color: #e5e7eb; border: 1px solid #374151; cursor:pointer; }
+      a { color: #93c5fd; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: .5rem; border-bottom: 1px solid #1f2937; }
+    </style>
+  </head>
+  <body>
+    <div class="title">
+      <h2>Gensyn Manager</h2>
+      <a href="/logout">Logout</a>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Agents</h3>
+        <div id="card-grid"></div>
+      </div>
+    </div>
+
+    <script>
+      // Minimal auto-refresh of agent list
+      const grid = document.getElementById('card-grid');
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(220px, 220px))';
+      grid.style.justifyContent = 'space-between';
+      grid.style.gap = '0.75rem';
+
+      function renderCards(list) {
+        grid.innerHTML = '';
+        if (!list.length) {
+          const d = document.createElement('div'); d.className='muted'; d.textContent='No agents connected'; grid.appendChild(d); return;
+        }
+        list.forEach(a => {
+          const card = document.createElement('a'); card.href='/agent/' + encodeURIComponent(a.id); card.style.textDecoration='none';
+          card.className = 'agent-card';
+          card.style.background = '#0f172a'; card.style.border='1px solid #1f2937'; card.style.borderRadius='12px'; card.style.padding='0.9rem'; card.style.display='flex'; card.style.flexDirection='column'; card.style.justifyContent='space-between';
+          card.style.height = '240px';
+          card.style.transition = 'background 0.15s ease, box-shadow 0.15s ease';
+          card.style.overflow = 'hidden';
+          card.addEventListener('mouseover', ()=> card.style.background='#111827');
+          card.addEventListener('mouseout', ()=> card.style.background='#0f172a');
+          const top = document.createElement('div');
+          const name = document.createElement('div'); name.textContent=a.name; name.style.fontWeight='600'; name.style.marginBottom='0.2rem'; name.style.fontSize='0.95rem'; top.appendChild(name);
+          const id = document.createElement('div'); id.textContent=a.id.slice(0,6) + '…'; id.className='muted'; id.style.fontSize='0.7rem'; top.appendChild(id);
+          const bottom = document.createElement('div'); bottom.className='muted'; bottom.style.fontSize='0.75rem'; bottom.textContent = `CPU ${a.metrics?.cpu ?? ''}  •  MEM ${a.metrics?.mem ?? ''}`;
+          card.appendChild(top); card.appendChild(bottom);
+          grid.appendChild(card);
+        });
+      }
+
+      setInterval(() => { fetch('/agents').then(r=>r.json()).then(d => { renderCards(d.agents || []); }); }, 2000);
+      fetch('/agents').then(r=>r.json()).then(d => renderCards(d.agents || []));
+    </script>
+  </body>
+  </html>
+
+

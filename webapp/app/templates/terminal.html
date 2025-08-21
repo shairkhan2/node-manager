@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Web Terminal - Gensyn Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); max-width: 1200px; margin: 0 auto; }
+      .title { display:flex; justify-content: space-between; align-items:center; }
+      a { color: #93c5fd; }
+      .btn { display:inline-block; margin-right: .5rem; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #1f2937; color: #e5e7eb; border: 1px solid #374151; cursor:pointer; }
+      .btn.primary { background: #2563eb; border-color: #1d4ed8; }
+      .muted { color: #9ca3af; font-size: .9rem; }
+      .terminal-wrap { height: 70vh; background: #000; border-radius: 8px; border: 1px solid #374151; overflow: hidden; }
+      #terminal { height: 100%; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="title">
+        <h2>Web Terminal</h2>
+        <div><a href="/">← Back</a></div>
+      </div>
+      <div class="muted">Interactive shell in your browser (xterm.js). Requires cookies/session login.</div>
+
+      <div class="terminal-wrap">
+        <div id="terminal"></div>
+      </div>
+
+      <div class="muted">Tip: Use Ctrl+C to stop a running command. Resize the window to adjust the terminal.</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script>
+      const term = new Terminal({
+        cursorBlink: true,
+        convertEol: true,
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+        fontSize: 14,
+        theme: {
+          background: '#000000',
+          foreground: '#e5e7eb'
+        }
+      });
+      const fitAddon = new FitAddon.FitAddon();
+      term.loadAddon(fitAddon);
+      const container = document.getElementById('terminal');
+      term.open(container);
+      fitAddon.fit();
+
+      function sendResize(ws) {
+        try {
+          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+        } catch (e) {}
+      }
+
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = proto + '://' + location.host + '/ws/terminal';
+      const ws = new WebSocket(wsUrl);
+
+      ws.addEventListener('open', () => {
+        term.focus();
+        sendResize(ws);
+      });
+
+      ws.addEventListener('message', (ev) => {
+        term.write(ev.data);
+      });
+
+      ws.addEventListener('close', () => {
+        term.write('\r\n\x1b[31m[Disconnected]\x1b[0m\r\n');
+      });
+
+      ws.addEventListener('error', () => {
+        term.write('\r\n\x1b[31m[Connection error]\x1b[0m\r\n');
+      });
+
+      term.onData(data => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        fitAddon.fit();
+        sendResize(ws);
+      });
+    </script>
+  </body>
+  </html>
+
+

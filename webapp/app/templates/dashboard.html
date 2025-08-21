@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Dashboard - Gensyn Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 1rem; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); }
+      .title { display:flex; justify-content: space-between; align-items:center; }
+      .muted { color: #9ca3af; font-size: .9rem; }
+      .ok { color: #34d399; }
+      .bad { color: #f87171; }
+      .btn { display:inline-block; margin-right: .5rem; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #1f2937; color: #e5e7eb; border: 1px solid #374151; cursor:pointer; }
+      .btn.primary { background: #2563eb; border-color: #1d4ed8; }
+      .row { margin-top: .5rem; }
+      a { color: #93c5fd; }
+      .flash { background:#0b2e13; color:#86efac; padding:.5rem .75rem; border-radius:8px; margin-bottom:.75rem; border:1px solid #14532d; }
+      form { display:inline; }
+    </style>
+  </head>
+  <body>
+    <div class="title">
+      <h2>Gensyn Manager</h2>
+      <a href="/logout">Logout</a>
+    </div>
+    {% if flash %}<div class="flash">{{ flash }}</div>{% endif %}
+
+    <div class="grid">
+      <div class="card">
+        <h3>Status</h3>
+        <div class="row">Public IP: <strong>{{ public_ip }}</strong></div>
+        <div class="row">API: <strong class="{{ 'ok' if api_status=='Online' else 'bad' }}">{{ api_status }}</strong></div>
+        <div class="row">Gensyn screen: <strong class="{{ 'ok' if gensyn_running else 'bad' }}">{{ 'Running' if gensyn_running else 'Stopped' }}</strong></div>
+        <div class="row">Last activity: <span class="muted">{{ last_activity }}</span></div>
+        {% if joining %}<div class="row">{{ joining }}</div>{% endif %}
+        {% if starting %}<div class="row">{{ starting }}</div>{% endif %}
+      </div>
+
+      <div class="card">
+        <h3>VPN</h3>
+        <form method="post" action="/vpn/on"><button class="btn primary" type="submit">VPN ON</button></form>
+        <form method="post" action="/vpn/off"><button class="btn" type="submit">VPN OFF</button></form>
+      </div>
+
+      <div class="card">
+        <h3>Gensyn</h3>
+        <form method="post" action="/gensyn/start"><button class="btn primary" type="submit">Start</button></form>
+        <form method="post" action="/gensyn/kill"><button class="btn" type="submit">Kill</button></form>
+        <form method="post" action="/backup/run"><button class="btn" type="submit">Backup login files</button></form>
+        <div class="row"><a class="btn" href="/gensyn-login">Gensyn Login</a></div>
+      </div>
+
+      <div class="card">
+        <h3>Peer</h3>
+        {% if peer_name %}
+          <div class="row">Name: <strong>{{ peer_name }}</strong></div>
+          <div class="row">Reward: <strong>{{ reward }}</strong></div>
+          <div class="row">Win: <strong>{{ score }}</strong></div>
+          <div class="row">Online: <strong class="{{ 'ok' if peer_online else 'bad' }}">{{ 'Yes' if peer_online else 'No' }}</strong></div>
+        {% else %}
+          <div class="row muted">No peer info yet</div>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Terminal</h3>
+        <div class="row">Status: <strong class="{{ 'ok' if terminal_running else 'bad' }}">{{ 'ON' if terminal_running else 'OFF' }}</strong></div>
+        {% if terminal_ssh %}<div class="row"><code>{{ terminal_ssh }}</code></div>{% endif %}
+        <form method="post" action="/tmate/toggle"><button class="btn" type="submit">{{ 'Stop' if terminal_running else 'Start' }} terminal</button></form>
+        <div class="row"><a class="btn primary" href="/terminal">Open web terminal</a></div>
+      </div>
+
+      <div class="card">
+        <h3>More</h3>
+        <div class="row"><a href="/file-manager">File manager</a></div>
+      </div>
+    </div>
+  </body>
+  </html>
+
+

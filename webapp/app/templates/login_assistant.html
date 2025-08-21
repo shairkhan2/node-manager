@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Gensyn Login Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { 
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; 
+        padding: 1.5rem; 
+        background: #0b1120; 
+        color: #e5e7eb; 
+      }
+      .card { 
+        background: #111827; 
+        padding: 2rem; 
+        border-radius: 12px; 
+        box-shadow: 0 6px 28px rgba(0,0,0,.4); 
+        max-width: 600px; 
+        margin: 0 auto; 
+      }
+      .row { margin: 1rem 0; }
+      a { color: #93c5fd; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .btn { 
+        display: inline-block; 
+        margin-top: 1rem; 
+        padding: 0.75rem 1.5rem; 
+        border-radius: 8px; 
+        background: #3b82f6; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+        font-size: 1rem;
+        transition: background-color 0.2s;
+      }
+      .btn:hover { background: #2563eb; }
+      .btn:disabled { background: #6b7280; cursor: not-allowed; }
+      .flash { 
+        background: #0b2e13; 
+        color: #86efac; 
+        padding: 0.75rem 1rem; 
+        border-radius: 8px; 
+        margin-bottom: 1rem; 
+        border: 1px solid #14532d; 
+      }
+      input { 
+        width: 100%;
+        padding: 0.75rem 1rem; 
+        border-radius: 8px; 
+        border: 1px solid #374151; 
+        background: #0f172a; 
+        color: #e5e7eb; 
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+      input:focus { 
+        outline: none; 
+        border-color: #3b82f6; 
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); 
+      }
+      .step { 
+        text-align: center; 
+        padding: 2rem 0; 
+      }
+      .step-title { 
+        font-size: 1.5rem; 
+        margin-bottom: 1.5rem; 
+        color: #f9fafb; 
+      }
+      .step-description { 
+        color: #9ca3af; 
+        margin-bottom: 2rem; 
+      }
+      .email-display { 
+        background: #1f2937; 
+        padding: 1rem; 
+        border-radius: 8px; 
+        margin: 1rem 0; 
+        border: 1px solid #374151; 
+      }
+      .screenshot-container { 
+        text-align: center; 
+        margin-top: 2rem; 
+      }
+      .screenshot-container img { 
+        max-width: 100%; 
+        border: 1px solid #374151; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+      }
+      .back-link { 
+        display: inline-block; 
+        margin-bottom: 1.5rem; 
+        padding: 0.5rem 1rem; 
+        background: #374151; 
+        border-radius: 6px; 
+        transition: background-color 0.2s; 
+      }
+      .back-link:hover { background: #4b5563; }
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="back-link"><a href="/">← Back to Main Site</a></div>
+    
+    <div class="card">
+      <h1 style="text-align: center; margin-bottom: 2rem; color: #f9fafb;">Gensyn Login Assistant</h1>
+      
+      {% if flash %}
+      <div class="flash" id="flash">{{ flash }}</div>
+      {% endif %}
+
+      <!-- Step 1: Email Input -->
+      <div id="step-email" class="step">
+        <div class="step-title">Enter Your Email</div>
+        <div class="step-description">We'll send you a one-time password to complete the login process.</div>
+        
+        <form method="post" action="/gensyn-login/email" id="email-form">
+          <input type="email" name="email" placeholder="Enter your email address" required />
+          <button class="btn" type="submit" id="email-submit">Send OTP</button>
+        </form>
+      </div>
+
+      <!-- Step 2: OTP Input -->
+      <div id="step-otp" class="step hidden">
+        <div class="step-title">Enter OTP</div>
+        <div class="step-description">We've sent a 6-digit code to your email address.</div>
+        
+        <div class="email-display">
+          <strong>Email:</strong> <span id="otp-email">{{ status.email if status else '' }}</span>
+          <button type="button" class="btn" id="edit-email-btn" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem; background: #6b7280;">Edit Email</button>
+        </div>
+        
+        <form method="post" action="/gensyn-login/otp" id="otp-form">
+          <input type="text" name="otp" placeholder="Enter 6-digit OTP" required maxlength="6" pattern="[0-9]{6}" />
+          <button class="btn" type="submit" id="otp-submit">Verify OTP</button>
+        </form>
+      </div>
+
+      <!-- Step 3: Final Screenshot -->
+      <div id="step-screenshot" class="step hidden">
+        <div class="step-title">Login Complete!</div>
+        <div class="step-description">Here's your current login status:</div>
+        
+        <div class="screenshot-container">
+          <img id="shot-img" src="/gensyn-login/current-screenshot?cache={{ ts }}" alt="Login Status Screenshot" />
+        </div>
+      </div>
+
+      <!-- Status and Error Display -->
+      <div id="status" class="row" style="text-align: center; color: #9ca3af;">
+        Status: <code>{{ status.status if status else 'Ready to start' }}</code>
+      </div>
+      
+      <div id="error" class="row hidden" style="text-align: center;">
+        <div class="flash" style="background: #450a0a; color: #fca5a5; border-color: #7f1d1d;">
+          Error: <span id="error-text">{{ status.error if status else '' }}</span>
+        </div>
+      </div>
+
+      <script>
+        const stepEmail = document.getElementById('step-email');
+        const stepOtp = document.getElementById('step-otp');
+        const stepScreenshot = document.getElementById('step-screenshot');
+        const otpEmail = document.getElementById('otp-email');
+        const shotImg = document.getElementById('shot-img');
+        const statusEl = document.getElementById('status');
+        const errorEl = document.getElementById('error');
+        const errorText = document.getElementById('error-text');
+        const editEmailBtn = document.getElementById('edit-email-btn');
+
+        function showStep(stepToShow) {
+          // Hide all steps
+          stepEmail.classList.add('hidden');
+          stepOtp.classList.add('hidden');
+          stepScreenshot.classList.add('hidden');
+          
+          // Show the requested step
+          stepToShow.classList.remove('hidden');
+        }
+
+        function resetToInitial() {
+          showStep(stepEmail);
+          // Reset form states
+          document.getElementById('email-submit').disabled = false;
+          document.getElementById('email-submit').textContent = 'Send OTP';
+          document.getElementById('otp-submit').disabled = false;
+          document.getElementById('otp-submit').textContent = 'Verify OTP';
+          // Clear any previous errors
+          errorEl.classList.add('hidden');
+        }
+
+        // Handle edit email button
+        editEmailBtn.addEventListener('click', function() {
+          resetToInitial();
+        });
+
+        async function poll() {
+          try {
+            const res = await fetch('/gensyn-login/status.json');
+            const s = await res.json();
+            
+            // Update status
+            statusEl.innerHTML = 'Status: <code>' + (s.status || 'Ready to start') + '</code>';
+            
+            // Handle errors
+            if (s.error) {
+              errorText.textContent = s.error;
+              errorEl.classList.remove('hidden');
+            } else {
+              errorEl.classList.add('hidden');
+            }
+            
+            // Handle step transitions
+            if (s.email_submitted && !s.otp_submitted) {
+              showStep(stepOtp);
+              if (s.email) otpEmail.textContent = s.email;
+            } else if (s.otp_submitted || ['success', 'failed', 'error', 'magic_link'].includes(s.status)) {
+              showStep(stepScreenshot);
+              if (s.screenshot) {
+                shotImg.src = '/gensyn-login/current-screenshot?cache=' + Date.now();
+              }
+            } else {
+              // If no status or fresh page, show initial step
+              resetToInitial();
+            }
+            
+          } catch (e) {
+            console.error('Polling error:', e);
+            // On error, reset to initial state
+            resetToInitial();
+          }
+          
+          setTimeout(poll, 1500);
+        }
+
+        // Start polling when page loads
+        poll();
+
+        // Handle form submissions with better UX
+        document.getElementById('email-form').addEventListener('submit', function() {
+          document.getElementById('email-submit').disabled = true;
+          document.getElementById('email-submit').textContent = 'Sending...';
+        });
+
+        document.getElementById('otp-form').addEventListener('submit', function() {
+          document.getElementById('otp-submit').disabled = true;
+          document.getElementById('otp-submit').textContent = 'Verifying...';
+        });
+
+        // Reset to initial state on page load/refresh
+        window.addEventListener('load', resetToInitial);
+      </script>
+    </div>
+  </body>
+</html>
+
+

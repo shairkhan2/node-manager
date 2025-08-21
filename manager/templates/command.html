@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Run Command</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 1.5rem; background: #0b1120; color: #e5e7eb; }
+      .card { background: #111827; padding: 1rem; border-radius: 12px; box-shadow: 0 6px 28px rgba(0,0,0,.4); max-width: 900px; margin: 0 auto; }
+      a { color: #93c5fd; }
+      .btn { display:inline-block; margin-top: .5rem; padding: .5rem .8rem; border-radius: 8px; background: #2563eb; color: #e5e7eb; border: 1px solid #1d4ed8; cursor:pointer; }
+      input[type=text] { width: 100%; padding:.6rem .8rem; border-radius:8px; border:1px solid #374151; background:#0f172a; color:#e5e7eb; }
+      pre { background:#0b1225; padding: .75rem; border-radius:8px; overflow:auto; border:1px solid #1f2937; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div style="display:flex; justify-content: space-between; align-items:center;">
+        <h2>Run Command</h2>
+        <div><a href="/">← Back</a></div>
+      </div>
+      <form method="post">
+        <input type="text" name="cmd" placeholder="Enter command, e.g. uname -a" required />
+        <button class="btn" type="submit">Run</button>
+      </form>
+      {% if result %}
+        <h3>Result</h3>
+        {% if result.error %}
+          <div style="color:#f87171;">Error: {{ result.error }}</div>
+        {% endif %}
+        {% if result.stdout %}<div><strong>stdout</strong></div><pre>{{ result.stdout }}</pre>{% endif %}
+        {% if result.stderr %}<div><strong>stderr</strong></div><pre>{{ result.stderr }}</pre>{% endif %}
+        {% if result.code is not none %}<div>Exit code: {{ result.code }}</div>{% endif %}
+      {% endif %}
+    </div>
+  </body>
+  </html>
+
+
